@@ -29,6 +29,8 @@ export default function Home() {
   const [games, setGames] = useState<SteamGame[]>([])
   const [gamesLoading, setGamesLoading] = useState(false)
   const [gamesError, setGamesError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
+  const [verificationResult, setVerificationResult] = useState<string | null>(null)
 
   const fetchCurrentUser = async () => {
     try {
@@ -94,7 +96,48 @@ export default function Home() {
     setUser(null)
     setGames([])
     setGamesError(null)
+    setVerificationResult(null)
     document.cookie = 'steam_user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+  }
+
+  const verifyGamingActivity = async () => {
+    if (!user) return
+    
+    setVerifying(true)
+    setVerificationResult(null)
+    
+    try {
+      const response = await fetch('/api/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        if (data.success) {
+          // Redirect to success page with verification details
+          const params = new URLSearchParams({
+            success: 'true',
+            message: data.message,
+            webhook_status: data.webhook_status?.toString() || '',
+            games_sent: data.games_sent?.toString() || '',
+            vlayer_proof: data.vlayer_proof || ''
+          })
+          window.location.href = `/verified?${params.toString()}`
+        } else {
+          setVerificationResult(`ℹ️ ${data.message}`)
+        }
+      } else {
+        setVerificationResult(`❌ Verification failed: ${data.error}`)
+      }
+    } catch (error) {
+      setVerificationResult('❌ Network error during verification')
+    } finally {
+      setVerifying(false)
+    }
   }
 
   const formatPlaytime = (minutes: number) => {
@@ -155,6 +198,34 @@ export default function Home() {
               </div>
 
               <div className="pt-4 border-t border-violet-400/20 space-y-4">
+                <div className="text-center mb-4">
+                  <button
+                    onClick={verifyGamingActivity}
+                    disabled={verifying}
+                    className="glass-button py-3 px-6 rounded-xl text-violet-100 font-semibold hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mx-auto"
+                  >
+                    {verifying ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-violet-300 border-t-transparent"></div>
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        </svg>
+                        <span>Verify my gaming activity</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {verificationResult && (
+                    <div className="mt-3 p-3 rounded-lg bg-violet-900/30 border border-violet-400/20">
+                      <p className="text-sm text-violet-200">{verificationResult}</p>
+                    </div>
+                  )}
+                </div>
+                
                 <div className="text-left">
                   <h3 className="text-lg font-semibold text-violet-100 mb-3">Your Steam Games</h3>
                   

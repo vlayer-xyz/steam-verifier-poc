@@ -36,6 +36,27 @@ function isAuthenticated(request: NextRequest): string | null {
   }
 }
 
+async function fetchSteamGames(steamId: string): Promise<{ game_count: number; games: SteamGame[] }> {
+  const response = await axios.get<SteamOwnedGamesResponse>(
+    `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/`,
+    {
+      params: {
+        key: process.env.STEAM_API_KEY,
+        steamid: steamId,
+        include_appinfo: true,
+        format: 'json'
+      }
+    }
+  )
+  
+  const games = response.data.response.games || []
+  
+  return {
+    game_count: response.data.response.game_count,
+    games: games
+  }
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const steamId = isAuthenticated(request)
   
@@ -48,24 +69,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
   
   try {
-    const response = await axios.get<SteamOwnedGamesResponse>(
-      `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/`,
-      {
-        params: {
-          key: process.env.STEAM_API_KEY,
-          steamid: steamId,
-          include_appinfo: true,
-          format: 'json'
-        }
-      }
-    )
-    
-    const games = response.data.response.games || []
-    
-    return NextResponse.json({
-      game_count: response.data.response.game_count,
-      games: games
-    })
+    const gamesData = await fetchSteamGames(steamId)
+    return NextResponse.json(gamesData)
     
   } catch (error) {
     console.error('Error fetching Steam games:', error)
