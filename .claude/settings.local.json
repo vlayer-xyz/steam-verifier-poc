@@ -8,7 +8,8 @@
       "Bash(npm install:*)",
       "Bash(npm run dev:*)",
       "Bash(git commit:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []
