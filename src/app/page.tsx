@@ -172,7 +172,7 @@ export default function Home() {
                 Verify your Steam
               </h1>
               <p className="text-violet-200/80 text-lg">
-                Connect to prove your game activity
+                Connect to prove your game activity (works with public profiles only)
               </p>
             </div>
           )}
