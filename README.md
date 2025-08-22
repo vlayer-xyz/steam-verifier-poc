@@ -1,5 +1,7 @@
 # Steam owned games verification POC
 
+https://steam-verifier-poc.vercel.app/
+
 A proof-of-concept application that demonstrates Steam authentication and game library integration. Users can authenticate with their Steam account and view their owned games with playtime statistics.
 
 ## Features
