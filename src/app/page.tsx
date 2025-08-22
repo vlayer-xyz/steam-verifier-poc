@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+import Image from 'next/image'
 import { SteamLoginButton } from '@/components/SteamLoginButton'
 
 interface SteamUser {
@@ -64,7 +65,7 @@ export default function Home() {
     setLoading(false)
   }, [])
 
-  const fetchGames = async () => {
+  const fetchGames = useCallback(async () => {
     if (!user) return
     
     setGamesLoading(true)
@@ -84,13 +85,13 @@ export default function Home() {
     } finally {
       setGamesLoading(false)
     }
-  }
+  }, [user])
 
   useEffect(() => {
     if (user) {
       fetchGames()
     }
-  }, [user])
+  }, [user, fetchGames])
 
   const handleLogout = () => {
     setUser(null)
@@ -133,7 +134,7 @@ export default function Home() {
       } else {
         setVerificationResult(`❌ Verification failed: ${data.error}`)
       }
-    } catch (error) {
+    } catch {
       setVerificationResult('❌ Network error during verification')
     } finally {
       setVerifying(false)
@@ -180,10 +181,13 @@ export default function Home() {
             <div className="space-y-6">
               <div className="flex flex-col items-center space-y-4">
                 <div className="relative">
-                  <img
+                  <Image
                     src={user.image}
                     alt={user.name}
+                    width={96}
+                    height={96}
                     className="w-24 h-24 rounded-full border-4 border-violet-400/30 shadow-lg"
+                    priority
                   />
                   <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-violet-900/50"></div>
                 </div>
@@ -274,7 +278,7 @@ export default function Home() {
               <SteamLoginButton />
 
               <p className="text-violet-200/60 text-sm leading-relaxed">
-                We'll redirect you to Steam's secure login page.
+                We&apos;ll redirect you to Steam&apos;s secure login page.
               </p>
             </div>
           )}
@@ -289,9 +293,11 @@ export default function Home() {
               rel="noopener noreferrer"
               className="hover:opacity-80 transition-opacity"
             >
-              <img 
+              <Image 
                 src="/vlayer-logo.svg" 
                 alt="vlayer"
+                width={48}
+                height={24}
                 className="h-6 w-auto"
               />
             </a>

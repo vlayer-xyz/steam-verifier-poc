@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+
 export default function VerifiedPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
@@ -38,9 +40,11 @@ export default function VerifiedPage() {
               rel="noopener noreferrer"
               className="hover:opacity-80 transition-opacity"
             >
-              <img 
+              <Image 
                 src="/vlayer-logo.svg" 
                 alt="vlayer"
+                width={48}
+                height={24}
                 className="h-6 w-auto"
               />
             </a>

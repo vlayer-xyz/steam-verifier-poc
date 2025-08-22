@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
-  const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+export async function GET() {
+  const baseUrl = process.env.APP_URL || 'http://localhost:3000'
   
   const steamOpenIdUrl = new URL('https://steamcommunity.com/openid/login')
   steamOpenIdUrl.searchParams.set('openid.ns', 'http://specs.openid.net/auth/2.0')

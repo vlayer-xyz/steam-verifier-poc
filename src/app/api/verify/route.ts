@@ -34,7 +34,7 @@ interface WebhookPayload {
     game_count: number
     games: SteamGame[]
   }
-  vlayer_proof: any | null
+  vlayer_proof: unknown | null
   timestamp: string
 }
 

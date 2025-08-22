@@ -32,8 +32,12 @@ export const metadata: Metadata = {
     title: "Steam Games Verification | vlayer POC",
     description: "Verify your Steam game ownership and view your library with playtime statistics. Built with vlayer's verifiable data layer.",
   },
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#8b5cf6",
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#8b5cf6',
 };
 
 export default function RootLayout({
