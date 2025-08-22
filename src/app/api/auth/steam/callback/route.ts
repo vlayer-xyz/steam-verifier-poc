@@ -25,9 +25,18 @@ interface UserData {
   profileUrl: string
 }
 
-const baseUrl = process.env.VERCEL_URL 
-  ? `https://${process.env.VERCEL_URL}` 
-  : process.env.APP_URL || 'http://localhost:3000';
+// Get the correct base URL based on environment
+function getBaseUrl() {
+  if (process.env.VERCEL_ENV === "production") {
+    return "https://steam-verifier-poc.vercel.app"; // Your custom domain
+  } else if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`; // Preview/deployment URL
+  } else {
+    return process.env.APP_URL || 'http://localhost:3000'; // Local development
+  }
+}
+
+const baseUrl = getBaseUrl();
 
 async function verifySteamOpenID(openidParams: OpenIDParams): Promise<string> {
   const endpoint = "https://steamcommunity.com/openid/login";
