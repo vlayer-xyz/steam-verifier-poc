@@ -1,65 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import axios from 'axios'
-
-interface SteamGame {
-  appid: number
-  name?: string
-  playtime_forever: number
-  img_icon_url?: string
-  img_logo_url?: string
-  playtime_windows_forever?: number
-  playtime_mac_forever?: number
-  playtime_linux_forever?: number
-  rtime_last_played?: number
-  playtime_disconnected?: number
-}
-
-interface SteamOwnedGamesResponse {
-  response: {
-    game_count: number
-    games: SteamGame[]
-  }
-}
-
-interface UserData {
-  id: string
-  name: string
-  image: string
-  profileUrl: string
-}
-
-interface WebhookPayload {
-  steam_user: UserData
-  games: {
-    game_count: number
-    games: SteamGame[]
-  }
-  vlayer_proof: unknown | null
-  timestamp: string
-}
-
-async function generateVlayerProof(steamId: string) {
-  try {
-    // Build the Steam API URL with all required query parameters
-    const steamApiUrl = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&include_appinfo=true&format=json`
-    
-    const response = await axios.post('https://web-proof-vercel-oq8rvyvuw-vlayer.vercel.app/api/handler', {
-      url: steamApiUrl,
-      method: "GET",
-      notaryUrl: "https://test-notary.vlayer.xyz/v0.1.0-alpha.11/",
-      headers: []
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-    
-    return response.data
-  } catch (error) {
-    console.error('Error generating vlayer proof:', error)
-    throw error
-  }
-}
+import { performVerification, UserData } from '@/lib/services/verification'
 
 function getAuthenticatedUser(request: NextRequest): UserData | null {
   const steamUserCookie = request.cookies.get('steam_user')
@@ -76,27 +16,6 @@ function getAuthenticatedUser(request: NextRequest): UserData | null {
   }
 }
 
-async function fetchSteamGames(steamId: string): Promise<{ game_count: number; games: SteamGame[] }> {
-  const response = await axios.get<SteamOwnedGamesResponse>(
-    `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/`,
-    {
-      params: {
-        key: process.env.STEAM_API_KEY,
-        steamid: steamId,
-        include_appinfo: true,
-        format: 'json'
-      }
-    }
-  )
-  
-  const games = response.data.response.games || []
-  
-  return {
-    game_count: response.data.response.game_count,
-    games: games
-  }
-}
-
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = getAuthenticatedUser(request)
   
@@ -109,65 +28,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   
   try {
-    // Fetch Steam games data
-    const gamesData = await fetchSteamGames(user.id)
-    
-    // Generate vlayer proof
-    let vlayerProof = null
-    try {
-      vlayerProof = await generateVlayerProof(user.id)
-      console.log('Vlayer proof generated successfully:', vlayerProof)
-    } catch (proofError) {
-      console.warn('Failed to generate vlayer proof, continuing without it:', proofError)
-    }
-    
-    // Send webhook if URL is configured
-    let webhookStatus = null
-    let webhookSent = false
-    
-    if (process.env.WEBHOOK_URL) {
-      try {
-        const webhookPayload: WebhookPayload = {
-          steam_user: user,
-          games: gamesData,
-          vlayer_proof: vlayerProof,
-          timestamp: new Date().toISOString()
-        }
-        
-        const webhookResponse = await axios.post(process.env.WEBHOOK_URL, webhookPayload, {
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Steam-Games-Verification/1.0'
-          },
-          timeout: 10000
-        })
-        
-        webhookStatus = webhookResponse.status
-        webhookSent = true
-        console.log('Webhook sent successfully:', webhookStatus)
-      } catch (webhookError) {
-        console.error('Webhook failed:', webhookError)
-        // Continue with verification even if webhook fails
-      }
-    }
-    
-    return NextResponse.json({
-      success: true,
-      message: webhookSent ? 'Verification completed and webhook sent successfully' : 'Verification completed (no webhook configured)',
-      webhook_sent: webhookSent,
-      webhook_status: webhookStatus,
-      games_sent: gamesData.game_count,
-      vlayer_proof: vlayerProof ? 'Generated successfully' : 'Failed to generate',
-      vlayer_proof_data: vlayerProof
-    })
-    
+    const result = await performVerification(user)
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('Error during verification:', error)
-    
-    if (axios.isAxiosError(error) && error.config?.url?.includes('steampowered.com')) {
-      return NextResponse.json({ error: 'Failed to fetch Steam games data' }, { status: 500 })
-    }
-    
-    return NextResponse.json({ error: 'Verification process failed' }, { status: 500 })
+    console.error('Verification error:', error)
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Verification process failed' 
+    }, { status: 500 })
   }
 }

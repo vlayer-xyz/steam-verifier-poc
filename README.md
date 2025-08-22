@@ -11,6 +11,7 @@ A proof-of-concept application that demonstrates Steam authentication and game l
 - Show game titles with playtime hours
 - Webhook integration for verification events
 - Cryptographic proof generation using vlayer
+- Optional database storage for verification history
 - Modern, responsive UI with glassmorphic design
 - Secure session management with HTTP-only cookies
 
@@ -29,6 +30,9 @@ Create a `.env.local` file in the root directory with:
 STEAM_API_KEY=your_steam_api_key_here
 APP_URL=http://localhost:3000
 WEBHOOK_URL=https://your-webhook-endpoint.com/steam-games
+
+# Optional: Database configuration (only if you want to persist verifications)
+DATABASE_URL=postgresql://username:password@localhost:5432/database_name
 ```
 
 ### Installation
@@ -36,6 +40,10 @@ WEBHOOK_URL=https://your-webhook-endpoint.com/steam-games
 ```bash
 # Install dependencies
 npm install
+
+# Optional: Set up database (only if you want to persist verifications)
+npm run db:generate  # Generate database schema
+npm run db:migrate   # Apply migrations to your database
 
 # Run the development server
 npm run dev
@@ -104,6 +112,49 @@ When a user successfully completes verification, the application sends a POST re
 
 The webhook URL should be configured in your environment variables. If no webhook URL is provided, verification will still complete but no external notification will be sent.
 
+## Database Integration (Optional)
+
+The application can optionally store verification results in a PostgreSQL database for historical tracking and analytics.
+
+### Database Features
+
+- **Optional Configuration**: Works with or without database
+- **Verification History**: Stores complete verification records including:
+  - Steam user profile data
+  - Game library snapshots
+  - vlayer cryptographic proofs
+  - Webhook delivery status
+  - Timestamps for audit trails
+
+### Database Setup
+
+1. **Configure Database URL** in your `.env.local`:
+   ```env
+   DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+   ```
+
+2. **Run Database Migrations**:
+   ```bash
+   npm run db:generate  # Generate schema
+   npm run db:migrate   # Apply to database
+   ```
+
+3. **Database Management**:
+   ```bash
+   npm run db:studio    # Open Drizzle Studio for database browsing
+   ```
+
+### Database Schema
+
+The `verifications` table includes:
+- User identification (Steam ID, username, avatar)
+- Game data (count, complete library JSON)
+- Verification proof (vlayer cryptographic proof)
+- Webhook status (delivery success, HTTP status)
+- Audit timestamps
+
+**Note**: If `DATABASE_URL` is not configured, the application will work normally but verification results won't be persisted.
+
 ## Technologies Used
 
 - **Next.js 14** - React framework with App Router
@@ -111,6 +162,8 @@ The webhook URL should be configured in your environment variables. If no webhoo
 - **Tailwind CSS** - Utility-first CSS framework
 - **Steam Web API** - Game data and authentication
 - **Axios** - HTTP client for API requests
+- **Drizzle ORM** - Type-safe database toolkit (optional)
+- **PostgreSQL** - Database for verification storage (optional)
 
 ## Powered by
 
