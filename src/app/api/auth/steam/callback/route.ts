@@ -25,7 +25,9 @@ interface UserData {
   profileUrl: string
 }
 
-const baseUrl = process.env.VERCEL_URL || process.env.APP_URL || 'http://localhost:3000';
+const baseUrl = process.env.VERCEL_URL 
+  ? `https://${process.env.VERCEL_URL}` 
+  : process.env.APP_URL || 'http://localhost:3000';
 
 async function verifySteamOpenID(openidParams: OpenIDParams): Promise<string> {
   const endpoint = "https://steamcommunity.com/openid/login";

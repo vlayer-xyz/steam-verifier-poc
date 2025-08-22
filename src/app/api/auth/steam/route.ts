@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 
-const baseUrl = process.env.VERCEL_URL || process.env.APP_URL || 'http://localhost:3000';
+const baseUrl = process.env.VERCEL_URL 
+  ? `https://${process.env.VERCEL_URL}` 
+  : process.env.APP_URL || 'http://localhost:3000';
 
 export async function GET() {  
   const steamOpenIdUrl = new URL('https://steamcommunity.com/openid/login')
