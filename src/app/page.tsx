@@ -30,6 +30,18 @@ export default function Home() {
   const [gamesLoading, setGamesLoading] = useState(false)
   const [gamesError, setGamesError] = useState<string | null>(null)
 
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/user')
+      const data = await response.json()
+      if (data.user) {
+        setUser(data.user)
+      }
+    } catch (error) {
+      console.error('Error fetching current user:', error)
+    }
+  }
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const userParam = urlParams.get('user')
@@ -42,6 +54,9 @@ export default function Home() {
       } catch (error) {
         console.error('Error parsing user data:', error)
       }
+    } else {
+      // Check for existing user in cookies
+      fetchCurrentUser()
     }
     
     setLoading(false)
