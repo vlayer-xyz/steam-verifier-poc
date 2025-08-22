@@ -108,14 +108,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Steam API key not configured' }, { status: 500 })
   }
   
-  if (!process.env.WEBHOOK_URL) {
-    return NextResponse.json({ 
-      success: false,
-      message: 'Webhook URL not configured - games not sent',
-      games_count: 0
-    })
-  }
-  
   try {
     // Fetch Steam games data
     const gamesData = await fetchSteamGames(user.id)
@@ -129,46 +121,53 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.warn('Failed to generate vlayer proof, continuing without it:', proofError)
     }
     
-    const webhookPayload: WebhookPayload = {
-      steam_user: user,
-      games: gamesData,
-      vlayer_proof: vlayerProof,
-      timestamp: new Date().toISOString()
-    }
+    // Send webhook if URL is configured
+    let webhookStatus = null
+    let webhookSent = false
     
-    const webhookResponse = await axios.post(process.env.WEBHOOK_URL, webhookPayload, {
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Steam-Games-Verification/1.0'
-      },
-      timeout: 10000
-    })
+    if (process.env.WEBHOOK_URL) {
+      try {
+        const webhookPayload: WebhookPayload = {
+          steam_user: user,
+          games: gamesData,
+          vlayer_proof: vlayerProof,
+          timestamp: new Date().toISOString()
+        }
+        
+        const webhookResponse = await axios.post(process.env.WEBHOOK_URL, webhookPayload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Steam-Games-Verification/1.0'
+          },
+          timeout: 10000
+        })
+        
+        webhookStatus = webhookResponse.status
+        webhookSent = true
+        console.log('Webhook sent successfully:', webhookStatus)
+      } catch (webhookError) {
+        console.error('Webhook failed:', webhookError)
+        // Continue with verification even if webhook fails
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      message: 'Games data sent to webhook successfully',
-      webhook_status: webhookResponse.status,
+      message: webhookSent ? 'Verification completed and webhook sent successfully' : 'Verification completed (no webhook configured)',
+      webhook_sent: webhookSent,
+      webhook_status: webhookStatus,
       games_sent: gamesData.game_count,
       vlayer_proof: vlayerProof ? 'Generated successfully' : 'Failed to generate',
       vlayer_proof_data: vlayerProof
     })
     
   } catch (error) {
-    console.error('Error sending to webhook:', error)
+    console.error('Error during verification:', error)
     
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
-        return NextResponse.json({ error: 'Webhook request timed out' }, { status: 408 })
-      }
-      if (error.response) {
-        return NextResponse.json({
-          error: 'Webhook request failed',
-          webhook_status: error.response.status,
-          webhook_error: error.response.data
-        }, { status: 502 })
-      }
+    if (axios.isAxiosError(error) && error.config?.url?.includes('steampowered.com')) {
+      return NextResponse.json({ error: 'Failed to fetch Steam games data' }, { status: 500 })
     }
     
-    return NextResponse.json({ error: 'Failed to send data to webhook' }, { status: 500 })
+    return NextResponse.json({ error: 'Verification process failed' }, { status: 500 })
   }
 }
