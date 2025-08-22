@@ -87,10 +87,7 @@ When a user successfully completes verification, the application sends a POST re
     ]
   },
   "vlayer_proof": {
-    "proof": "0x...",
-    "public_inputs": {...},
-    "verification_key": "...",
-    "timestamp": "2024-01-01T12:00:00.000Z"
+    "presentation": "{\"presentationJson\":{\"data\":\"0140000000000000005a983a6ce90e1062b4f331502210..00000\",\"meta\":{\"notaryUrl\":\"https://test-notary.vlayer.xyz:443\",\"websocketProxyUrl\":\"\"},\"version\":\"0.1.0-alpha.11\"}}"
   },
   "timestamp": "2024-01-01T12:00:00.000Z"
 }
