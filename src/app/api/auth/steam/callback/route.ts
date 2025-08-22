@@ -25,6 +25,8 @@ interface UserData {
   profileUrl: string
 }
 
+const baseUrl = process.env.VERCEL_URL || process.env.APP_URL || 'http://localhost:3000';
+
 async function verifySteamOpenID(openidParams: OpenIDParams): Promise<string> {
   const endpoint = "https://steamcommunity.com/openid/login";
 
@@ -81,7 +83,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const player = steamApiResponse.data.response.players[0]
     
     if (!player) {
-      return NextResponse.redirect(`${process.env.APP_URL}/?error=steam_user_not_found`)
+      return NextResponse.redirect(`${baseUrl}/?error=steam_user_not_found`)
     }
     
     // Store user data in session or JWT
@@ -93,7 +95,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
 
-    const response = NextResponse.redirect(`${process.env.APP_URL}/?user=${encodeURIComponent(JSON.stringify(userData))}`)
+    const response = NextResponse.redirect(`${baseUrl}/?user=${encodeURIComponent(JSON.stringify(userData))}`)
     
     // Set a cookie with user data
     response.cookies.set('steam_user', JSON.stringify(userData), {
@@ -107,6 +109,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
   } catch (error) {
     console.error('Steam authentication error:', error)
-    return NextResponse.redirect(`${process.env.APP_URL}/?error=steam_auth_error`)
+    return NextResponse.redirect(`${baseUrl}/?error=steam_auth_error`)
   }
 }
