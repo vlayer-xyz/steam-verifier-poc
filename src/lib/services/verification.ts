@@ -64,24 +64,44 @@ export interface VerificationResult {
 
 export async function generateVlayerProof(steamId: string): Promise<VlayerProof> {
   try {
-    // Build the Steam API URL with all required query parameters
-    const steamApiUrl = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&include_appinfo=true&format=json`
+    // Build the Steam API URL for vlayer proof (without include_appinfo to reduce payload size)
+    const steamApiUrl = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&format=json`
     
-    const response = await axios.post('https://web-proof-vercel-oq8rvyvuw-vlayer.vercel.app/api/handler', {
-      url: steamApiUrl,
-      method: "GET",
-      notaryUrl: "https://test-notary.vlayer.xyz/v0.1.0-alpha.11/",
-      headers: []
-    }, {
-      headers: {
-        'Content-Type': 'application/json'
+    
+    const response = await axios.post(
+      'https://web-prover.vlayer.xyz/api/v0/prove', 
+      {
+        url: steamApiUrl,
+        method: "GET",
+        notaryUrl: "https://test-notary.vlayer.xyz/v0.1.0-alpha.11/",
+        headers: []
+      }, 
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 30000, // 30 second timeout for proof generation
       }
-    })
+    )
     
+    console.log('✅ Vlayer proof generated successfully')
     return response.data
   } catch (error) {
-    console.error('Error generating vlayer proof:', error)
-    throw error
+    console.error('❌ Error generating vlayer proof:', error)
+    
+    if (axios.isAxiosError(error)) {
+      if (error.code === 'ECONNABORTED') {
+        throw new Error('Vlayer proof generation timed out')
+      }
+      if (error.response) {
+        throw new Error(`Vlayer service error: ${error.response.status} - ${error.response.statusText}`)
+      }
+      if (error.request) {
+        throw new Error('Unable to connect to vlayer service')
+      }
+    }
+    
+    throw new Error('Failed to generate vlayer proof')
   }
 }
 
