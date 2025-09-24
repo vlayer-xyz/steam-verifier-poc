@@ -53,7 +53,7 @@ npm run db:migrate   # Apply migrations to your database
 npm run dev
 ```
 
-Open [http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games](http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games) with your browser (replace the webhook URL with your own endpoint). The interface blocks sign-in and verification if the parameter is missing or invalid.
+Open [http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games&callbackUrl=https://your-dashboard.com/return](http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games&callbackUrl=https://your-dashboard.com/return) with your browser (replace both URLs with your own endpoints). The interface blocks sign-in and verification if either parameter is missing or invalid.
 
 ## How it Works
 
@@ -61,7 +61,7 @@ Open [http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-
 2. **User Data Retrieval**: After successful authentication, the app fetches user profile information from Steam API
 3. **Game Library Access**: For authenticated users, the app fetches their complete game library using Steam's `GetOwnedGames` API
 4. **Display**: Games are displayed sorted by playtime, showing titles and hours played
-5. **Verification**: Users can trigger verification once the page is opened with a `webhookUrl` query parameter. The app generates a cryptographic proof and posts the payload to the provided webhook URL.
+5. **Verification**: Users can trigger verification once the page is opened with both `webhookUrl` and `callbackUrl` query parameters. The app generates a cryptographic proof, posts the payload to the provided webhook URL, and then returns the user to the callback URL after success.
 
 ## API Endpoints
 
@@ -73,7 +73,7 @@ Open [http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-
 
 ## Webhook Integration
 
-When a user successfully completes verification, the application sends a POST request to the webhook that was passed on the landing URL (`/?webhookUrl=https://your-endpoint`). The payload structure is:
+When a user successfully completes verification, the application sends a POST request to the webhook that was passed on the landing URL (`/?webhookUrl=https://your-endpoint&callbackUrl=https://your-dashboard`). The payload structure is:
 
 ```json
 {
@@ -107,13 +107,14 @@ When a user successfully completes verification, the application sends a POST re
 }
 ```
 
-### Webhook Requirements & Usage
+### Webhook & Callback Requirements
 
-- **Provide the URL up front**: Append `?webhookUrl=https://your-webhook-endpoint.com/steam-games` to the main page before trying to sign in or verify. The login CTA is disabled until a valid URL is present.
+- **Provide both URLs up front**: Append `?webhookUrl=https://your-webhook-endpoint.com/steam-games&callbackUrl=https://your-dashboard.com/return` to the main page before trying to sign in or verify. The login CTA is disabled until valid URLs are present.
 - **Endpoint**: Must accept POST requests with JSON payload.
 - **Response**: Should return 2xx status code to indicate success.
 - **Timeout**: Webhook requests timeout after 10 seconds.
 - **Retry**: No automatic retries are performed; failures are surfaced in the UI and response body.
+- **Post-verification redirect**: After a successful webhook response, the app shows the success screen briefly and then redirects the browser to the supplied `callbackUrl`.
 
 ## Database Integration (Optional)
 

@@ -15,13 +15,20 @@ const baseUrl = getBaseUrl();
 
 export async function GET(request: NextRequest) {  
   const webhookUrl = request.nextUrl.searchParams.get('webhookUrl')
+  const callbackUrl = request.nextUrl.searchParams.get('callbackUrl')
   const steamOpenIdUrl = new URL('https://steamcommunity.com/openid/login')
   steamOpenIdUrl.searchParams.set('openid.ns', 'http://specs.openid.net/auth/2.0')
   steamOpenIdUrl.searchParams.set('openid.mode', 'checkid_setup')
-  const returnTo = webhookUrl
-    ? `${baseUrl}/api/auth/steam/callback?webhookUrl=${encodeURIComponent(webhookUrl)}`
-    : `${baseUrl}/api/auth/steam/callback`
-  steamOpenIdUrl.searchParams.set('openid.return_to', returnTo)
+
+  const returnToUrl = new URL(`${baseUrl}/api/auth/steam/callback`)
+  if (webhookUrl) {
+    returnToUrl.searchParams.set('webhookUrl', webhookUrl)
+  }
+  if (callbackUrl) {
+    returnToUrl.searchParams.set('callbackUrl', callbackUrl)
+  }
+
+  steamOpenIdUrl.searchParams.set('openid.return_to', returnToUrl.toString())
   steamOpenIdUrl.searchParams.set('openid.realm', baseUrl)
   steamOpenIdUrl.searchParams.set('openid.identity', 'http://specs.openid.net/auth/2.0/identifier_select')
   steamOpenIdUrl.searchParams.set('openid.claimed_id', 'http://specs.openid.net/auth/2.0/identifier_select')

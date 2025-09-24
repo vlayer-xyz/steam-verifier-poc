@@ -29,9 +29,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   
   try {
     let webhookUrl: string | null = null
+    let callbackUrl: string | null = null
     try {
       const body = await request.json()
       webhookUrl = typeof body?.webhookUrl === 'string' ? body.webhookUrl : null
+      callbackUrl = typeof body?.callbackUrl === 'string' ? body.callbackUrl : null
     } catch {
       // Ignore JSON parse errors; webhookUrl handled below
     }
@@ -40,14 +42,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json({ error: 'webhookUrl is required' }, { status: 400 })
     }
 
+    if (!callbackUrl) {
+      return NextResponse.json({ error: 'callbackUrl is required' }, { status: 400 })
+    }
+
     try {
       webhookUrl = new URL(webhookUrl).toString()
     } catch {
       return NextResponse.json({ error: 'webhookUrl must be a valid absolute URL' }, { status: 400 })
     }
 
+    try {
+      callbackUrl = new URL(callbackUrl).toString()
+    } catch {
+      return NextResponse.json({ error: 'callbackUrl must be a valid absolute URL' }, { status: 400 })
+    }
+
     const result = await performVerification(user, webhookUrl)
-    return NextResponse.json(result)
+    return NextResponse.json({ ...result, callbackUrl })
   } catch (error) {
     console.error('Verification error:', error)
     return NextResponse.json({ 

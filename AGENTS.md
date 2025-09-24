@@ -4,7 +4,7 @@
 Source lives in `src/` with App Router screens in `src/app` (pages like `page.tsx`, protected views in `app/verified`, and API route handlers under `app/api`). Shared UI components stay in `src/components`, while `src/lib/db` holds Drizzle schemas and migration helpers, and `src/lib/services` wraps Steam and verification logic. Database migrations live in `drizzle/`, public assets in `public/`, and CLI utilities in `scripts/`; align new work with these boundaries before adding folders.
 
 ## Build, Test & Development Commands
-- `npm run dev`: Start the Next.js dev server on port 3001 with Turbopack. Browse to `http://localhost:3000/?webhookUrl=https://example.com/your-webhook`—the login flow is disabled until that query param is present.
+- `npm run dev`: Start the Next.js dev server on port 3001 with Turbopack. Browse to `http://localhost:3000/?webhookUrl=https://example.com/your-webhook&callbackUrl=https://example.com/return`—the login flow is disabled until both query params are present and valid.
 - `npm run build`: Produce an optimized bundle; run before deploying.
 - `npm run start`: Serve the production build locally.
 - `npm run lint`: Run the ESLint ruleset (`next/core-web-vitals`).
@@ -21,4 +21,4 @@ Automated coverage is currently limited to the verification smoke script. Add ne
 Commits follow concise, imperative summaries around 60 characters (see `git log` for examples such as “change verification service...”); group related changes together. PRs should explain the user impact, call out environment variable updates, and attach screenshots or terminal output for UI or verification changes. Link to any tracked issue and list manual testing steps so reviewers can replay the scenario quickly.
 
 ## Environment & Security Notes
-Keep secrets in `.env.local` and never commit them; document new keys in the README’s Environment Variables table. Verification depends on public Steam profiles, so highlight that constraint when proposing workflow changes. The UI always expects the webhook via the `webhookUrl` query string; the only env-based webhook value left is `WEBHOOK_URL`, which exists solely for the CLI verification script. Sanitize any user-supplied URLs before reflecting them in redirects or API calls.
+Keep secrets in `.env.local` and never commit them; document new keys in the README’s Environment Variables table. Verification depends on public Steam profiles, so highlight that constraint when proposing workflow changes. The UI always expects `webhookUrl` and `callbackUrl` via the query string; the only env-based webhook value left is `WEBHOOK_URL`, which exists solely for the CLI verification script. Sanitize any user-supplied URLs before reflecting them in redirects or API calls.

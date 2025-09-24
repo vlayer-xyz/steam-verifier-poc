@@ -5,8 +5,25 @@ import Image from 'next/image'
 
 export default function VerifiedPage() {
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const target = params.get('callbackUrl')
+
+    if (!target) {
+      return
+    }
+
+    let normalizedTarget: string | null = null
+    try {
+      normalizedTarget = new URL(target).toString()
+    } catch (error) {
+      console.error('Invalid callbackUrl:', error)
+      return
+    }
+
     const redirect = setTimeout(() => {
-      window.location.href = 'https://cockpit.elympics.ai'
+      if (normalizedTarget) {
+        window.location.href = normalizedTarget
+      }
     }, 3000)
 
     return () => clearTimeout(redirect)
@@ -36,6 +53,9 @@ export default function VerifiedPage() {
             </h1>
             <p className="text-violet-200/80 text-lg">
               Your gaming activity has been successfully verified
+            </p>
+            <p className="text-violet-200/60 text-sm mt-4">
+              Sit tight! We’ll send you back to your dashboard in a couple of seconds.
             </p>
           </div>
         </div>

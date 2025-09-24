@@ -34,6 +34,8 @@ export default function Home() {
   const [verificationResult, setVerificationResult] = useState<string | null>(null)
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
   const [webhookError, setWebhookError] = useState<string | null>(null)
+  const [callbackUrl, setCallbackUrl] = useState<string | null>(null)
+  const [callbackError, setCallbackError] = useState<string | null>(null)
 
   const fetchCurrentUser = async () => {
     try {
@@ -50,6 +52,7 @@ export default function Home() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     const webhookParam = urlParams.get('webhookUrl')
+    const callbackParam = urlParams.get('callbackUrl')
 
     if (!webhookParam) {
       setWebhookUrl(null)
@@ -63,6 +66,21 @@ export default function Home() {
         console.error('Invalid webhookUrl parameter:', error)
         setWebhookUrl(null)
         setWebhookError('Webhook URL is invalid. Supply a fully qualified webhookUrl query parameter.')
+      }
+    }
+
+    if (!callbackParam) {
+      setCallbackUrl(null)
+      setCallbackError('Provide a callbackUrl query parameter so we know where to send you next.')
+    } else {
+      try {
+        const parsedCallback = new URL(callbackParam)
+        setCallbackUrl(parsedCallback.toString())
+        setCallbackError(null)
+      } catch (error) {
+        console.error('Invalid callbackUrl parameter:', error)
+        setCallbackUrl(null)
+        setCallbackError('Callback URL is invalid. Supply a fully qualified callbackUrl query parameter.')
       }
     }
 
@@ -129,6 +147,10 @@ export default function Home() {
       setVerificationResult(`❌ ${webhookError ?? 'Provide a valid webhookUrl query parameter before verification.'}`)
       return
     }
+    if (!callbackUrl || callbackError) {
+      setVerificationResult(`❌ ${callbackError ?? 'Provide a valid callbackUrl query parameter before verification.'}`)
+      return
+    }
 
     setVerifying(true)
     setVerificationResult(null)
@@ -139,24 +161,25 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ webhookUrl }),
+        body: JSON.stringify({ webhookUrl, callbackUrl }),
       })
 
       const data = await response.json()
 
-      if (response.ok) {
-        if (data.success) {
-          const params = new URLSearchParams({
-            success: 'true',
-            message: data.message,
-            webhook_status: data.webhook_status?.toString() || '',
-            games_sent: data.games_sent?.toString() || '',
-            vlayer_proof: data.vlayer_proof || '',
-          })
-          window.location.href = `/verified?${params.toString()}`
-        } else {
-          setVerificationResult(`ℹ️ ${data.message}`)
-        }
+          if (response.ok) {
+            if (data.success) {
+              const params = new URLSearchParams({
+                success: 'true',
+                message: data.message,
+                webhook_status: data.webhook_status?.toString() || '',
+                games_sent: data.games_sent?.toString() || '',
+                vlayer_proof: data.vlayer_proof || '',
+              })
+              params.set('callbackUrl', callbackUrl)
+              window.location.href = `/verified?${params.toString()}`
+            } else {
+              setVerificationResult(`ℹ️ ${data.message}`)
+            }
       } else {
         setVerificationResult(`❌ Verification failed: ${data.error}`)
       }
@@ -200,18 +223,36 @@ export default function Home() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <main className="relative z-10 max-w-md w-full space-y-8">
         <div className="glass-morphic rounded-[28px] px-8 py-10 text-center">
-          {webhookError && (
-            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[rgba(255,107,107,0.25)] bg-[rgba(255,107,107,0.08)] px-4 py-3 text-left">
-              <svg
-                className="w-5 h-5 text-[var(--color-warning)] mt-0.5 flex-shrink-0"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14A1 1 0 003 18h14a1 1 0 00.894-1.447l-7-14zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-2a1 1 0 01-2 0V8a1 1 0 012 0v4z" />
-              </svg>
-              <p className="text-secondary text-sm leading-relaxed">
-                {webhookError}
-              </p>
+          {(webhookError || callbackError) && (
+            <div className="mb-6 space-y-3 text-left">
+              {webhookError && (
+                <div className="flex items-start gap-3 rounded-2xl border border-[rgba(255,107,107,0.25)] bg-[rgba(255,107,107,0.08)] px-4 py-3">
+                  <svg
+                    className="w-5 h-5 text-[var(--color-warning)] mt-0.5 flex-shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14A1 1 0 003 18h14a1 1 0 00.894-1.447l-7-14zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-2a1 1 0 01-2 0V8a1 1 0 012 0v4z" />
+                  </svg>
+                  <p className="text-secondary text-sm leading-relaxed">
+                    {webhookError}
+                  </p>
+                </div>
+              )}
+              {callbackError && (
+                <div className="flex items-start gap-3 rounded-2xl border border-[rgba(255,107,107,0.25)] bg-[rgba(255,107,107,0.08)] px-4 py-3">
+                  <svg
+                    className="w-5 h-5 text-[var(--color-warning)] mt-0.5 flex-shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14A1 1 0 003 18h14a1 1 0 00.894-1.447l-7-14zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-2a1 1 0 01-2 0V8a1 1 0 012 0v4z" />
+                  </svg>
+                  <p className="text-secondary text-sm leading-relaxed">
+                    {callbackError}
+                  </p>
+                </div>
+              )}
             </div>
           )}
           {!user && (
@@ -226,7 +267,8 @@ export default function Home() {
               </header>
               <SteamLoginButton
                 webhookUrl={webhookUrl ?? undefined}
-                disabled={Boolean(webhookError)}
+                callbackUrl={callbackUrl ?? undefined}
+                disabled={Boolean(webhookError) || Boolean(callbackError)}
               />
               <p className="text-muted text-sm mt-5">
                 We’ll redirect you to Steam’s secure login page.
@@ -315,7 +357,7 @@ export default function Home() {
                 <div className="space-y-4">
                   <button
                     onClick={verifyGamingActivity}
-                    disabled={verifying || Boolean(webhookError)}
+                    disabled={verifying || Boolean(webhookError) || Boolean(callbackError)}
                     className="button-primary w-full py-4 px-6 rounded-full font-semibold flex items-center justify-center gap-3"
                   >
                     {verifying ? (

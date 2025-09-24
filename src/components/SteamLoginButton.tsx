@@ -2,20 +2,25 @@
 
 interface SteamLoginButtonProps {
   webhookUrl?: string
+  callbackUrl?: string
   disabled?: boolean
 }
 
-export function SteamLoginButton({ webhookUrl, disabled }: SteamLoginButtonProps) {
+export function SteamLoginButton({ webhookUrl, callbackUrl, disabled }: SteamLoginButtonProps) {
   const handleSteamLogin = () => {
-    if (disabled || !webhookUrl) return
-    const loginUrl = `/api/auth/steam?webhookUrl=${encodeURIComponent(webhookUrl)}`
+    if (disabled || !webhookUrl || !callbackUrl) return
+    const params = new URLSearchParams({
+      webhookUrl,
+      callbackUrl,
+    })
+    const loginUrl = `/api/auth/steam?${params.toString()}`
     window.location.href = loginUrl
   }
 
   return (
     <button
       onClick={handleSteamLogin}
-      disabled={disabled}
+      disabled={disabled || !webhookUrl || !callbackUrl}
       className="button-primary w-full py-4 px-6 rounded-full font-semibold text-white flex items-center justify-center gap-3 group disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <svg
