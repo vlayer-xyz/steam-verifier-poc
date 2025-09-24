@@ -29,11 +29,15 @@ Create a `.env.local` file in the root directory with:
 ```env
 STEAM_API_KEY=your_steam_api_key_here
 APP_URL=http://localhost:3000
-WEBHOOK_URL=https://your-webhook-endpoint.com/steam-games
 
 # Optional: Database configuration (only if you want to persist verifications)
 DATABASE_URL=postgresql://username:password@localhost:5432/database_name
+
+# Optional: CLI verification script target
+WEBHOOK_URL=https://your-webhook-endpoint.com/steam-games
 ```
+
+`WEBHOOK_URL` is only read by `scripts/test-verification.js`. The web UI requires the webhook to be provided via the `webhookUrl` query parameter instead of an environment variable.
 
 ### Installation
 
@@ -49,7 +53,7 @@ npm run db:migrate   # Apply migrations to your database
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
+Open [http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games](http://localhost:3000/?webhookUrl=https://your-webhook-endpoint.com/steam-games) with your browser (replace the webhook URL with your own endpoint). The interface blocks sign-in and verification if the parameter is missing or invalid.
 
 ## How it Works
 
@@ -57,7 +61,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 2. **User Data Retrieval**: After successful authentication, the app fetches user profile information from Steam API
 3. **Game Library Access**: For authenticated users, the app fetches their complete game library using Steam's `GetOwnedGames` API
 4. **Display**: Games are displayed sorted by playtime, showing titles and hours played
-5. **Verification**: Users can trigger verification which generates a cryptographic proof and sends data to configured webhook
+5. **Verification**: Users can trigger verification once the page is opened with a `webhookUrl` query parameter. The app generates a cryptographic proof and posts the payload to the provided webhook URL.
 
 ## API Endpoints
 
@@ -69,7 +73,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Webhook Integration
 
-When a user successfully completes verification, the application sends a POST request to the configured `WEBHOOK_URL` with the following JSON payload:
+When a user successfully completes verification, the application sends a POST request to the webhook that was passed on the landing URL (`/?webhookUrl=https://your-endpoint`). The payload structure is:
 
 ```json
 {
@@ -103,14 +107,13 @@ When a user successfully completes verification, the application sends a POST re
 }
 ```
 
-### Webhook Requirements
+### Webhook Requirements & Usage
 
-- **Endpoint**: Must accept POST requests with JSON payload
-- **Response**: Should return 2xx status code to indicate success
-- **Timeout**: Webhook requests timeout after 10 seconds
-- **Retry**: No automatic retries are performed
-
-The webhook URL should be configured in your environment variables. If no webhook URL is provided, verification will still complete but no external notification will be sent.
+- **Provide the URL up front**: Append `?webhookUrl=https://your-webhook-endpoint.com/steam-games` to the main page before trying to sign in or verify. The login CTA is disabled until a valid URL is present.
+- **Endpoint**: Must accept POST requests with JSON payload.
+- **Response**: Should return 2xx status code to indicate success.
+- **Timeout**: Webhook requests timeout after 10 seconds.
+- **Retry**: No automatic retries are performed; failures are surfaced in the UI and response body.
 
 ## Database Integration (Optional)
 

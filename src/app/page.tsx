@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { SteamLoginButton } from '@/components/SteamLoginButton'
 
@@ -32,6 +32,8 @@ export default function Home() {
   const [gamesError, setGamesError] = useState<string | null>(null)
   const [verifying, setVerifying] = useState(false)
   const [verificationResult, setVerificationResult] = useState<string | null>(null)
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
+  const [webhookError, setWebhookError] = useState<string | null>(null)
 
   const fetchCurrentUser = async () => {
     try {
@@ -47,37 +49,57 @@ export default function Home() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
+    const webhookParam = urlParams.get('webhookUrl')
+
+    if (!webhookParam) {
+      setWebhookUrl(null)
+      setWebhookError('Provide a webhookUrl query parameter before continuing.')
+    } else {
+      try {
+        const parsed = new URL(webhookParam)
+        setWebhookUrl(parsed.toString())
+        setWebhookError(null)
+      } catch (error) {
+        console.error('Invalid webhookUrl parameter:', error)
+        setWebhookUrl(null)
+        setWebhookError('Webhook URL is invalid. Supply a fully qualified webhookUrl query parameter.')
+      }
+    }
+
     const userParam = urlParams.get('user')
-    
+
     if (userParam) {
       try {
-        const userData = JSON.parse(decodeURIComponent(userParam))
+        const userData = JSON.parse(userParam)
         setUser(userData)
-        window.history.replaceState({}, document.title, window.location.pathname)
+        const cleanedParams = new URLSearchParams(urlParams)
+        cleanedParams.delete('user')
+        const query = cleanedParams.toString()
+        const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname
+        window.history.replaceState({}, document.title, newUrl)
       } catch (error) {
         console.error('Error parsing user data:', error)
       }
     } else {
-      // Check for existing user in cookies
       fetchCurrentUser()
     }
-    
+
     setLoading(false)
   }, [])
 
   const fetchGames = useCallback(async () => {
     if (!user) return
-    
+
     setGamesLoading(true)
     setGamesError(null)
-    
+
     try {
       const response = await fetch('/api/steam/games')
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch games')
       }
-      
+
       const data: GamesResponse = await response.json()
       setGames(data.games)
     } catch (error) {
@@ -103,29 +125,33 @@ export default function Home() {
 
   const verifyGamingActivity = async () => {
     if (!user) return
-    
+    if (!webhookUrl || webhookError) {
+      setVerificationResult(`❌ ${webhookError ?? 'Provide a valid webhookUrl query parameter before verification.'}`)
+      return
+    }
+
     setVerifying(true)
     setVerificationResult(null)
-    
+
     try {
       const response = await fetch('/api/verify', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ webhookUrl }),
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok) {
         if (data.success) {
-          // Redirect to success page with verification details
           const params = new URLSearchParams({
             success: 'true',
             message: data.message,
             webhook_status: data.webhook_status?.toString() || '',
             games_sent: data.games_sent?.toString() || '',
-            vlayer_proof: data.vlayer_proof || ''
+            vlayer_proof: data.vlayer_proof || '',
           })
           window.location.href = `/verified?${params.toString()}`
         } else {
@@ -146,155 +172,224 @@ export default function Home() {
     return hours > 0 ? `${hours}h` : `${minutes}m`
   }
 
+  const curatedGames = useMemo(
+    () =>
+      games
+        .filter((game) => game.name && game.playtime_forever > 0)
+        .sort((a, b) => b.playtime_forever - a.playtime_forever)
+        .slice(0, 5),
+    [games]
+  )
+
+  const totalHours = useMemo(
+    () => Math.floor(games.reduce((acc, game) => acc + game.playtime_forever, 0) / 60),
+    [games]
+  )
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="glass-morphic rounded-2xl p-8">
-          <div className="animate-pulse text-violet-200">Loading...</div>
+      <div className="min-h-screen flex items-center justify-center bg-transparent">
+        <div className="glass-morphic rounded-[28px] px-10 py-8 text-center">
+          <div className="animate-pulse text-muted text-base">Loading interface…</div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-indigo-500/5 blur-3xl"></div>
-      </div>
-
-      <main className="relative z-10 max-w-md w-full">
-        <div className="glass-morphic rounded-3xl p-8 text-center">
-          {!user && (
-            <div className="mb-8">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-200 via-purple-200 to-indigo-200 bg-clip-text text-transparent mb-4">
-                Verify your Steam
-              </h1>
-              <p className="text-violet-200/80 text-lg">
-                Connect to prove your game activity (works with public profiles only)
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
+      <main className="relative z-10 max-w-md w-full space-y-8">
+        <div className="glass-morphic rounded-[28px] px-8 py-10 text-center">
+          {webhookError && (
+            <div className="mb-6 flex items-start gap-3 rounded-2xl border border-[rgba(255,107,107,0.25)] bg-[rgba(255,107,107,0.08)] px-4 py-3 text-left">
+              <svg
+                className="w-5 h-5 text-[var(--color-warning)] mt-0.5 flex-shrink-0"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14A1 1 0 003 18h14a1 1 0 00.894-1.447l-7-14zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-2a1 1 0 01-2 0V8a1 1 0 012 0v4z" />
+              </svg>
+              <p className="text-secondary text-sm leading-relaxed">
+                {webhookError}
               </p>
             </div>
           )}
+          {!user && (
+            <>
+              <header className="space-y-3 mb-8">
+                <h1 className="text-3xl font-semibold tracking-tight text-primary">
+                  Verify your Steam
+                </h1>
+                <p className="text-secondary text-base">
+                  Connect your account to earn reputation.
+                </p>
+              </header>
+              <SteamLoginButton
+                webhookUrl={webhookUrl ?? undefined}
+                disabled={Boolean(webhookError)}
+              />
+              <p className="text-muted text-sm mt-5">
+                We’ll redirect you to Steam’s secure login page.
+              </p>
+            </>
+          )}
 
-          {user ? (
-            <div className="space-y-6">
-              <div className="flex flex-col items-center space-y-4">
+          {user && (
+            <div className="space-y-8">
+              <header className="flex flex-col items-center gap-5 text-primary">
                 <div className="relative">
                   <Image
                     src={user.image}
                     alt={user.name}
                     width={96}
                     height={96}
-                    className="w-24 h-24 rounded-full border-4 border-violet-400/30 shadow-lg"
+                    className="w-24 h-24 rounded-full border-4 border-[#2f3542] shadow-[0_12px_30px_rgba(0,0,0,0.45)]"
                     priority
                   />
-                  <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-violet-900/50"></div>
                 </div>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-semibold">Welcome {user.name}!</h2>
+                  <p className="text-muted text-sm">Steam ID: {user.id}</p>
+                </div>
+              </header>
+
+              <section className="space-y-6 text-left">
                 <div>
-                  <h2 className="text-2xl font-bold text-violet-100 mb-1">
-                    Welcome, {user.name}!
-                  </h2>
-                  <p className="text-violet-200/60 text-sm">
-                    Steam ID: {user.id}
+                  <h3 className="text-primary text-sm font-medium uppercase tracking-[0.2em] mb-3">
+                    Your Steam Games
+                  </h3>
+
+                  {gamesLoading && (
+                    <div className="text-muted text-sm">Loading games…</div>
+                  )}
+
+                  {gamesError && (
+                    <div className="text-[#ff8b8b] text-sm">{gamesError}</div>
+                  )}
+
+                  {!gamesLoading && !gamesError && curatedGames.length > 0 && (
+                    <div className="space-y-3">
+                      {curatedGames.map((game) => (
+                        <div
+                          key={game.appid}
+                          className="surface-elevated rounded-full px-5 py-3 flex items-center justify-between"
+                        >
+                          <span className="text-primary text-sm font-medium truncate pr-2">
+                            {game.name}
+                          </span>
+                          <span className="text-secondary text-sm font-semibold">
+                            {formatPlaytime(game.playtime_forever)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {!gamesLoading && !gamesError && curatedGames.length === 0 && (
+                    <div className="text-muted text-sm">No games with recorded playtime yet.</div>
+                  )}
+                </div>
+
+                <div className="surface-elevated rounded-2xl px-4 py-5 flex flex-col gap-1 text-left">
+                  <span className="text-muted text-xs uppercase tracking-[0.25em]">
+                    All Hours
+                  </span>
+                  <span className="text-primary text-2xl font-semibold">
+                    {totalHours > 0 ? `${totalHours}h` : '—'}
+                  </span>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-2xl border border-[rgba(82,208,217,0.35)] bg-[rgba(82,208,217,0.12)] px-4 py-3 text-left">
+                  <svg
+                    className="w-5 h-5 text-[var(--color-accent-teal)] mt-0.5 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9 2a7 7 0 100 14h6.586l-1.293 1.293a1 1 0 101.414 1.414l3.003-3.003a1 1 0 000-1.414l-3.003-3.003a1 1 0 10-1.414 1.414L15.586 14H9a5 5 0 110-10 1 1 0 100-2z" />
+                  </svg>
+                  <p className="text-secondary text-sm leading-relaxed">
+                    We import the playtime you share publicly—set your Steam stats to public to showcase your full library.
                   </p>
                 </div>
-              </div>
 
-              <div className="pt-4 border-t border-violet-400/20 space-y-4">
-                <div className="text-center mb-4">
+                <div className="space-y-4">
                   <button
                     onClick={verifyGamingActivity}
-                    disabled={verifying}
-                    className="glass-button py-3 px-6 rounded-xl text-violet-100 font-semibold hover:text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 mx-auto"
+                    disabled={verifying || Boolean(webhookError)}
+                    className="button-primary w-full py-4 px-6 rounded-full font-semibold flex items-center justify-center gap-3"
                   >
                     {verifying ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-violet-300 border-t-transparent"></div>
-                        <span>Verifying...</span>
+                        <svg
+                          className="w-5 h-5 animate-spin text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            d="M4 12a8 8 0 018-8"
+                            strokeWidth="4"
+                            strokeLinecap="round"
+                          ></path>
+                        </svg>
+                        <span>Verifying…</span>
                       </>
                     ) : (
                       <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                        <svg
+                          className="w-5 h-5 text-white"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
                         </svg>
                         <span>Verify my gaming activity</span>
                       </>
                     )}
                   </button>
-                  
-                  {verificationResult && (
-                    <div className="mt-3 p-3 rounded-lg bg-violet-900/30 border border-violet-400/20">
-                      <p className="text-sm text-violet-200">{verificationResult}</p>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="text-left">
-                  <h3 className="text-lg font-semibold text-violet-100 mb-3">Your Steam Games</h3>
-                  
-                  {gamesLoading && (
-                    <div className="text-violet-200/60 text-sm">Loading games...</div>
-                  )}
-                  
-                  {gamesError && (
-                    <div className="text-red-400 text-sm mb-2">{gamesError}</div>
-                  )}
-                  
-                  {games.length > 0 && (
-                    <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-                      {games
-                        .filter(game => game.name && game.playtime_forever > 0)
-                        .sort((a, b) => b.playtime_forever - a.playtime_forever)
-                        .slice(0, 10)
-                        .map(game => (
-                          <div key={game.appid} className="flex justify-between items-center bg-violet-900/20 rounded-lg p-3">
-                            <span className="text-violet-100 text-sm font-medium truncate">
-                              {game.name}
-                            </span>
-                            <span className="text-violet-300 text-sm font-mono ml-2">
-                              {formatPlaytime(game.playtime_forever)}
-                            </span>
-                          </div>
-                        ))}
-                    </div>
-                  )}
-                  
-                  {games.length === 0 && !gamesLoading && !gamesError && (
-                    <div className="text-violet-200/60 text-sm mb-4">No games found</div>
-                  )}
-                </div>
-                
-                <button
-                  onClick={handleLogout}
-                  className="glass-button w-full py-3 px-6 rounded-xl text-violet-100 font-semibold hover:text-white transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <SteamLoginButton />
 
-              <p className="text-violet-200/60 text-sm leading-relaxed">
-                We&apos;ll redirect you to Steam&apos;s secure login page.
-              </p>
+                  {verificationResult && (
+                    <div className="surface-elevated rounded-2xl px-4 py-3 text-sm text-secondary">
+                      {verificationResult}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full text-muted hover:text-secondary text-sm font-medium transition-colors"
+                  >
+                    Back
+                  </button>
+                </div>
+              </section>
             </div>
           )}
         </div>
 
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center space-x-2 text-violet-300/60 text-sm">
+        <footer className="text-center text-muted text-sm">
+          <div className="inline-flex items-center gap-2">
             <span>Powered by</span>
-            <a 
-              href="https://vlayer.xyz" 
-              target="_blank" 
+            <a
+              href="https://vlayer.xyz"
+              target="_blank"
               rel="noopener noreferrer"
-              className="hover:opacity-80 transition-opacity"
+              className="text-secondary hover:text-primary transition-colors"
             >
-              <Image 
-                src="/vlayer-logo.svg" 
+              <Image
+                src="/vlayer-logo.svg"
                 alt="vlayer"
                 width={48}
                 height={24}
@@ -302,7 +397,7 @@ export default function Home() {
               />
             </a>
           </div>
-        </div>
+        </footer>
       </main>
     </div>
   )

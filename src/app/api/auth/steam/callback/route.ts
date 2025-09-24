@@ -74,6 +74,7 @@ async function verifySteamOpenID(openidParams: OpenIDParams): Promise<string> {
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const searchParams = request.nextUrl.searchParams
   const openidParams: OpenIDParams = Object.fromEntries(searchParams.entries())
+  const webhookUrlParam = searchParams.get('webhookUrl')
   
   if (openidParams['openid.mode'] !== 'id_res') {
     return NextResponse.redirect('/?error=steam_auth_failed')
@@ -106,7 +107,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
     
 
-    const response = NextResponse.redirect(`${baseUrl}/?user=${encodeURIComponent(JSON.stringify(userData))}`)
+    const redirectUrl = new URL(baseUrl)
+    redirectUrl.pathname = '/'
+    redirectUrl.searchParams.set('user', JSON.stringify(userData))
+    if (webhookUrlParam) {
+      redirectUrl.searchParams.set('webhookUrl', webhookUrlParam)
+    }
+
+    const response = NextResponse.redirect(redirectUrl.toString())
     
     // Set a cookie with user data
     response.cookies.set('steam_user', JSON.stringify(userData), {

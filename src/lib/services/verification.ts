@@ -126,12 +126,8 @@ export async function fetchSteamGames(steamId: string): Promise<GamesData> {
   }
 }
 
-export async function sendWebhook(payload: WebhookPayload): Promise<{ status: number; success: boolean }> {
-  if (!process.env.WEBHOOK_URL) {
-    throw new Error('Webhook URL not configured')
-  }
-
-  const response = await axios.post(process.env.WEBHOOK_URL, payload, {
+export async function sendWebhook(webhookUrl: string, payload: WebhookPayload): Promise<{ status: number; success: boolean }> {
+  const response = await axios.post(webhookUrl, payload, {
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': 'Steam-Games-Verification/1.0'
@@ -181,8 +177,12 @@ export async function storeVerificationResult(
   }
 }
 
-export async function performVerification(user: UserData): Promise<VerificationResult> {
+export async function performVerification(user: UserData, webhookUrl: string): Promise<VerificationResult> {
   try {
+    if (!webhookUrl) {
+      throw new Error('Webhook URL is required')
+    }
+
     // Fetch Steam games data
     const gamesData = await fetchSteamGames(user.id)
     
@@ -198,24 +198,22 @@ export async function performVerification(user: UserData): Promise<VerificationR
     // Send webhook if URL is configured
     let webhookStatus = null
     let webhookSent = false
-    
-    if (process.env.WEBHOOK_URL) {
-      try {
-        const webhookPayload: WebhookPayload = {
-          steam_user: user,
-          games: gamesData,
-          vlayer_proof: vlayerProof,
-          timestamp: new Date().toISOString()
-        }
-        
-        const webhookResult = await sendWebhook(webhookPayload)
-        webhookStatus = webhookResult.status
-        webhookSent = webhookResult.success
-        console.log('Webhook sent successfully:', webhookStatus)
-      } catch (webhookError) {
-        console.error('Webhook failed:', webhookError)
-        // Continue with verification even if webhook fails
+
+    try {
+      const webhookPayload: WebhookPayload = {
+        steam_user: user,
+        games: gamesData,
+        vlayer_proof: vlayerProof,
+        timestamp: new Date().toISOString()
       }
+
+      const webhookResult = await sendWebhook(webhookUrl, webhookPayload)
+      webhookStatus = webhookResult.status
+      webhookSent = webhookResult.success
+      console.log('Webhook sent successfully:', webhookStatus)
+    } catch (webhookError) {
+      console.error('Webhook failed:', webhookError)
+      // Continue with verification even if webhook fails
     }
 
     // Store verification result in database if enabled
@@ -231,7 +229,7 @@ export async function performVerification(user: UserData): Promise<VerificationR
       success: true,
       message: webhookSent 
         ? 'Verification completed and webhook sent successfully' 
-        : 'Verification completed (no webhook configured)',
+        : 'Verification completed but webhook delivery failed',
       webhook_sent: webhookSent,
       webhook_status: webhookStatus || undefined,
       games_sent: gamesData.game_count,

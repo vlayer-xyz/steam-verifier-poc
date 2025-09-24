@@ -1,8 +1,17 @@
 'use client'
 
+import { useEffect } from 'react'
 import Image from 'next/image'
 
 export default function VerifiedPage() {
+  useEffect(() => {
+    const redirect = setTimeout(() => {
+      window.location.href = 'https://cockpit.elympics.ai'
+    }, 3000)
+
+    return () => clearTimeout(redirect)
+  }, [])
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">

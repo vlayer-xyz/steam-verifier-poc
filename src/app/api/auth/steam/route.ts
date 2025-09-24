@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 // Get the correct base URL based on environment
 function getBaseUrl() {
@@ -13,11 +13,15 @@ function getBaseUrl() {
 
 const baseUrl = getBaseUrl();
 
-export async function GET() {  
+export async function GET(request: NextRequest) {  
+  const webhookUrl = request.nextUrl.searchParams.get('webhookUrl')
   const steamOpenIdUrl = new URL('https://steamcommunity.com/openid/login')
   steamOpenIdUrl.searchParams.set('openid.ns', 'http://specs.openid.net/auth/2.0')
   steamOpenIdUrl.searchParams.set('openid.mode', 'checkid_setup')
-  steamOpenIdUrl.searchParams.set('openid.return_to', `${baseUrl}/api/auth/steam/callback`)
+  const returnTo = webhookUrl
+    ? `${baseUrl}/api/auth/steam/callback?webhookUrl=${encodeURIComponent(webhookUrl)}`
+    : `${baseUrl}/api/auth/steam/callback`
+  steamOpenIdUrl.searchParams.set('openid.return_to', returnTo)
   steamOpenIdUrl.searchParams.set('openid.realm', baseUrl)
   steamOpenIdUrl.searchParams.set('openid.identity', 'http://specs.openid.net/auth/2.0/identifier_select')
   steamOpenIdUrl.searchParams.set('openid.claimed_id', 'http://specs.openid.net/auth/2.0/identifier_select')
