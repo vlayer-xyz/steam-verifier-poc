@@ -38,6 +38,16 @@ export default function VerifiedPage() {
       </div>
 
       <main className="relative z-10 max-w-lg w-full">
+        <div className="flex justify-center mb-6">
+          <Image
+            src="/elympics-logo.svg"
+            alt="elympics"
+            width={188}
+            height={30}
+            className="h-8 w-auto"
+            priority
+          />
+        </div>
         <div className="glass-morphic rounded-3xl p-8 text-center">
           <div className="mb-8">
             <div className="flex justify-center mb-6">

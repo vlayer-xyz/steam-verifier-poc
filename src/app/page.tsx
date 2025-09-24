@@ -222,6 +222,16 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
       <main className="relative z-10 max-w-md w-full space-y-8">
+        <div className="flex justify-center mb-4">
+          <Image
+            src="/elympics-logo.svg"
+            alt="elympics"
+            width={188}
+            height={30}
+            className="h-8 w-auto"
+            priority
+          />
+        </div>
         <div className="glass-morphic rounded-[28px] px-8 py-10 text-center">
           {(webhookError || callbackError) && (
             <div className="mb-6 space-y-3 text-left">
