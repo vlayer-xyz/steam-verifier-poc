@@ -60,6 +60,7 @@ export interface VerificationResult {
   vlayer_proof: string
   vlayer_proof_data?: VlayerProof | null
   verification_id?: string
+  vlayer_proof_error?: string
 }
 
 export async function generateVlayerProof(steamId: string): Promise<VlayerProof> {
@@ -73,12 +74,13 @@ export async function generateVlayerProof(steamId: string): Promise<VlayerProof>
       {
         url: steamApiUrl,
         method: "GET",
-        notaryUrl: "https://test-notary.vlayer.xyz/v0.1.0-alpha.11/",
         headers: []
       }, 
       {
         headers: {
           'Content-Type': 'application/json',
+           "x-client-id": "35f0d2ff-a881-45a9-ac36-21ad4006a625",
+           "Authorization": "Bearer RDDH7QMHAkyfmtLgQ5EMh671haJnRl9Lzgy5TSLNabZkm2IMhKKTkiOVWsxW"
         },
         timeout: 30000, // 30 second timeout for proof generation
       }
@@ -188,11 +190,17 @@ export async function performVerification(user: UserData, webhookUrl: string): P
     
     // Generate vlayer proof
     let vlayerProof = null
+    let vlayerProofError: string | null = null
     try {
       vlayerProof = await generateVlayerProof(user.id)
       console.log('Vlayer proof generated successfully:', vlayerProof)
     } catch (proofError) {
       console.warn('Failed to generate vlayer proof, continuing without it:', proofError)
+      if (proofError instanceof Error) {
+        vlayerProofError = proofError.message
+      } else {
+        vlayerProofError = 'Unknown vlayer proof error'
+      }
     }
     
     // Send webhook if URL is configured
@@ -235,7 +243,8 @@ export async function performVerification(user: UserData, webhookUrl: string): P
       games_sent: gamesData.game_count,
       vlayer_proof: vlayerProof ? 'Generated successfully' : 'Failed to generate',
       vlayer_proof_data: vlayerProof,
-      verification_id: verificationId || undefined
+      verification_id: verificationId || undefined,
+      vlayer_proof_error: vlayerProofError || undefined
     }
   } catch (error) {
     console.error('Error during verification:', error)
