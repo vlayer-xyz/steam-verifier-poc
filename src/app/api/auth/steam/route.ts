@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 // Get the correct base URL based on environment
 function getBaseUrl() {
   if (process.env.VERCEL_ENV === "production") {
-    return "https://steam-verifier-poc.vercel.app"; // Your custom domain
+    return "https://elympics.vlayer.xyz"; // Your custom domain
   } else if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`; // Preview/deployment URL
   } else {
