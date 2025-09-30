@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { Suspense, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 
@@ -17,7 +17,7 @@ function normalizeCallbackUrl(callbackUrl: string | null): string | null {
   }
 }
 
-export default function FailedPage() {
+function FailedPageContent() {
   const searchParams = useSearchParams()
 
   const messageParam = searchParams.get('message')
@@ -119,5 +119,13 @@ export default function FailedPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function FailedPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FailedPageContent />
+    </Suspense>
   )
 }
