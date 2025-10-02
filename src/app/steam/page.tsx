@@ -217,6 +217,11 @@ export default function SteamPage() {
             typeof data.vlayer_proof_error === 'string' && data.vlayer_proof_error.trim().length > 0
               ? data.vlayer_proof_error.trim()
               : null
+          const webhookFailed = data.webhook_sent === false
+          const webhookErrorMessage =
+            typeof data.webhook_error === 'string' && data.webhook_error.trim().length > 0
+              ? data.webhook_error.trim()
+              : null
 
           if (typeof data.callbackUrl === 'string') {
             callbackTarget = data.callbackUrl
@@ -224,22 +229,35 @@ export default function SteamPage() {
             callbackTarget = callbackUrl
           }
 
-          if (callbackTarget && vlayerProofError) {
-            try {
-              const callbackUrlWithParams = new URL(callbackTarget)
-              callbackUrlWithParams.searchParams.set('errMsg', vlayerProofError)
-              callbackTarget = callbackUrlWithParams.toString()
-            } catch (error) {
-              console.error('Failed to append errMsg to callbackUrl:', error)
-            }
+          const failureReasons: string[] = []
+          if (vlayerProofError) {
+            failureReasons.push(vlayerProofError)
+          }
+          if (webhookFailed) {
+            failureReasons.push(webhookErrorMessage || data.message || 'Webhook delivery failed')
           }
 
-          if (vlayerProofError) {
+          const failureMessage = failureReasons.length > 0 ? failureReasons.join(' ') : null
+
+          if (failureMessage) {
+            const callbackForFailure = callbackTarget ?? callbackUrl ?? null
+            let callbackTargetWithError = callbackForFailure
+
+            if (callbackForFailure) {
+              try {
+                const callbackUrlWithParams = new URL(callbackForFailure)
+                callbackUrlWithParams.searchParams.set('errMsg', failureMessage)
+                callbackTargetWithError = callbackUrlWithParams.toString()
+              } catch (error) {
+                console.error('Failed to append errMsg to callbackUrl:', error)
+              }
+            }
+
             const params = new URLSearchParams({
-              message: vlayerProofError,
+              message: failureMessage,
             })
-            if (callbackTarget) {
-              params.set('callbackUrl', callbackTarget)
+            if (callbackTargetWithError) {
+              params.set('callbackUrl', callbackTargetWithError)
             } else if (callbackUrl) {
               params.set('callbackUrl', callbackUrl)
             }
