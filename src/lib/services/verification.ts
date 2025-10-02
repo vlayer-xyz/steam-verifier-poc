@@ -61,6 +61,7 @@ export interface VerificationResult {
   vlayer_proof_data?: VlayerProof | null
   verification_id?: string
   vlayer_proof_error?: string
+  webhook_error?: string
 }
 
 export async function generateVlayerProof(steamId: string): Promise<VlayerProof> {
@@ -206,6 +207,7 @@ export async function performVerification(user: UserData, webhookUrl: string): P
     // Send webhook if URL is configured
     let webhookStatus = null
     let webhookSent = false
+    let webhookErrorMessage: string | null = null
 
     try {
       const webhookPayload: WebhookPayload = {
@@ -221,6 +223,21 @@ export async function performVerification(user: UserData, webhookUrl: string): P
       console.log('Webhook sent successfully:', webhookStatus)
     } catch (webhookError) {
       console.error('Webhook failed:', webhookError)
+      if (axios.isAxiosError(webhookError)) {
+        if (webhookError.response) {
+          const status = webhookError.response.status
+          const statusText = webhookError.response.statusText
+          webhookErrorMessage = `Webhook delivery failed with status ${status} ${statusText}`
+        } else if (webhookError.request) {
+          webhookErrorMessage = 'Webhook delivery failed: no response from endpoint'
+        } else {
+          webhookErrorMessage = webhookError.message
+        }
+      } else if (webhookError instanceof Error) {
+        webhookErrorMessage = webhookError.message
+      } else {
+        webhookErrorMessage = 'Unknown webhook delivery error'
+      }
       // Continue with verification even if webhook fails
     }
 
@@ -244,7 +261,8 @@ export async function performVerification(user: UserData, webhookUrl: string): P
       vlayer_proof: vlayerProof ? 'Generated successfully' : 'Failed to generate',
       vlayer_proof_data: vlayerProof,
       verification_id: verificationId || undefined,
-      vlayer_proof_error: vlayerProofError || undefined
+      vlayer_proof_error: vlayerProofError || undefined,
+      webhook_error: webhookErrorMessage || undefined
     }
   } catch (error) {
     console.error('Error during verification:', error)

@@ -68,7 +68,7 @@ function FailedPageContent() {
           <div className="mb-8">
             <div className="flex justify-center mb-6">
               <div className="w-20 h-20 rounded-full flex items-center justify-center border border-red-400/30 bg-red-500/10">
-                <svg className="w-10 h-10 text-red-300" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-10 h-10 text-red-300" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.536-9.536a1 1 0 00-1.414-1.414L10 9.172 7.879 7.05a1 1 0 10-1.414 1.415L8.586 10.586 6.465 12.707a1 1 0 101.414 1.414L10 12l2.121 2.121a1 1 0 001.415-1.414L11.414 10.586l2.122-2.122z"
