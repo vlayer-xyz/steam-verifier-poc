@@ -61,10 +61,9 @@ async function generateVlayerProof(steamId) {
   try {
     const steamApiUrl = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&format=json`
     
-    const response = await axios.post('https://web-prover.vlayer.xyz/api/v0/prove', {
+    const response = await axios.post('https://web-prover.vlayer.xyz/api/v1/prove', {
       url: steamApiUrl,
       method: "GET",
-      notaryUrl: "https://test-notary.vlayer.xyz/v0.1.0-alpha.11/",
       headers: []
     }, {
       headers: {

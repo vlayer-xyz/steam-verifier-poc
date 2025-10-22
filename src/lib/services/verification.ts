@@ -71,7 +71,7 @@ export async function generateVlayerProof(steamId: string): Promise<VlayerProof>
     
     
     const response = await axios.post(
-      'https://web-prover.vlayer.xyz/api/v0/prove', 
+      'https://web-prover.vlayer.xyz/api/v1/prove', 
       {
         url: steamApiUrl,
         method: "GET",
